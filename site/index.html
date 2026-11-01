@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market-Entry Decision Tool — Last-Mile Logistics (C2)</title>
+<meta name="description" content="An interactive MBB-style growth case: drag the committee inputs and watch the enter / partner / decline trigger for a last-mile operator entering e-commerce fulfillment recompute live.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <p class="eyebrow">C2 flagship · consulting · growth archetype</p>
+  <h1>Market-entry decision tool — last-mile logistics → e-commerce fulfillment</h1>
+  <p class="lede">One decision, three answers: <b>enter in-house</b>, <b>partner</b> (lease a 3PL's
+  capacity), or <b>decline</b>. Drag the inputs — the trigger, the derivation, the funnel and the
+  decision surface all recompute live, using the exact closed forms in <code>model/</code> of the
+  repo (<a href="https://github.com/Vedantk910/growth-market-entry" target="_blank" rel="noopener">growth-market-entry</a>).
+  33 offline tests · one-command reproducible · every figure source-tagged.</p>
+</header>
+
+<main>
+<section class="grid" id="demo">
+  <div class="panel inputs">
+    <h2>Committee inputs <span class="hint">the client's numbers, not mine — tagged [unverified] in the repo</span></h2>
+
+    <h3>The pivot (what the decision is priced on)</h3>
+    <label>Launch volume <output id="oV"></output>
+      <input type="range" id="inV" min="10000" max="1000000" step="10000" value="100000"></label>
+    <label>Partner rate p ($/parcel) <output id="oP"></output>
+      <input type="range" id="inP" min="3.00" max="7.00" step="0.05" value="5.00"></label>
+    <label>In-house variable cost cv ($/parcel) <output id="oCV"></output>
+      <input type="range" id="inCV" min="2.00" max="5.50" step="0.05" value="3.80"></label>
+    <label>Hub fixed cost F ($/yr) <output id="oF"></output>
+      <input type="range" id="inF" min="100000" max="2000000" step="25000" value="500000"></label>
+    <label>Revenue R ($/parcel) <output id="oR"></output>
+      <input type="range" id="inR" min="4.00" max="8.00" step="0.05" value="5.50"></label>
+    <label>Partner margin floor ($/parcel) <output id="oFloor"></output>
+      <input type="range" id="inFloor" min="0.10" max="1.00" step="0.05" value="0.30"></label>
+    <label>Discount rate <output id="oWacc"></output>
+      <input type="range" id="inWacc" min="4" max="16" step="0.5" value="8"></label>
+    <label>Cost decay /yr <output id="oDecay"></output>
+      <input type="range" id="inDecay" min="0" max="5" step="0.25" value="1.5"></label>
+
+    <h3>The funnel (context block — headroom, not the trigger)</h3>
+    <label>US parcels/yr (B) <output id="oUs"></output>
+      <input type="range" id="inUs" min="50" max="200" step="2.5" value="124.9"></label>
+    <label>E-comm last-mile slice (%) <output id="oEcomm"></output>
+      <input type="range" id="inEcomm" min="10" max="50" step="1" value="30"></label>
+    <label>One-metro share (%) <output id="oMetro"></output>
+      <input type="range" id="inMetro" min="0.5" max="8" step="0.25" value="2"></label>
+    <label>Capture rate (%) <output id="oCap"></output>
+      <input type="range" id="inCap" min="1" max="10" step="0.5" value="3"></label>
+
+    <p class="btns">
+      <button id="btnBaseline">Repo baseline</button>
+      <button id="btnRandom">Random committee scenario</button>
+    </p>
+  </div>
+
+  <div class="outstack">
+    <div class="panel verdict" id="verdict">
+      <span class="badge" id="rec">—</span>
+      <p id="recLine">Drag the inputs to set the trigger.</p>
+      <p class="pvrow">5-yr PV @ volume: build <b id="pvBuild">—</b> vs lease <b id="pvLease">—</b></p>
+    </div>
+
+    <div class="panel">
+      <h3>How it came — the math, live</h3>
+      <ol id="deriv">
+        <li>In-house all-in cost at V: <code>cv + F/V</code> = <b id="dIH">—</b> /parcel.</li>
+        <li>Partner is flat <b id="dPar">—</b> /parcel. The flip is where they cross:
+            <code>F / (p − cv)</code> = <b id="dFlip">—</b> parcels/yr.</li>
+        <li>With cost decay and the committee discount rate, the 5-yr PV break-even tightens to
+            <b id="dPv">—</b> parcels/yr.</li>
+        <li>Partner margin <code>R − p</code> = <b id="dParMargin">—</b>; at the $<span id="dDecline">—</span>
+            decline rate the margin hits the floor and the whole entry is down.</li>
+        <li>So at <b id="dVol">—</b>/yr: <b id="dRec">—</b>.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h3>Decision surface — in-house cost × partner rate <span class="hint">at your volume; green = build wins, amber = partner, red = decline</span></h3>
+      <div id="surfaceNote" class="hint"></div>
+      <div id="surface"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Volume table — in-house vs partner, year 1</h3>
+      <table id="volTable">
+        <thead><tr><th>Volume /yr</th><th>In-house $/parcel</th><th>Partner $/parcel</th><th>In-house margin</th><th>Partner margin</th><th>Wins</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>Funnel — SAM sets headroom, not the trigger</h3>
+      <div id="funnel"></div>
+      <p class="hint">Capturable flow is <b id="headroom">—</b>× the flip volume — runway, not the decision.
+      CAC <b>$18</b>/customer pays back in <b id="cacIh">—</b> parcels in-house vs <b id="cacPar">—</b> on the partner margin.</p>
+    </div>
+  </div>
+</section>
+
+<section id="built">
+  <h2>How I built it — step by step</h2>
+  <ol class="timeline">
+    <li><b>Frame one decision.</b> "Should a last-mile operator enter e-commerce fulfillment?" reduced
+      to three strategies priced on one yardstick (USD/parcel net contribution): enter in-house,
+      partner (lease a 3PL's capacity), or decline. Last-mile → e-comm was the chosen variant — a
+      defensible "I know this industry" pick (an in-house school operating model + a retail-risk
+      background).</li>
+    <li><b>Sourcing — public numbers only, each tagged.</b> Top-down: Menzies <i>Parcel Economy</i>
+      (124.9B US parcels, EST) and the filed USPS commercial-package figure (53.5B, 2023 —
+      CONFIRMED, the independent anchor). Bottom-up: USPS, UPS and RRD filings (cost/parcel
+      derived, tagged) plus RRD's +41% fulfillment volume growth as the adjacent-market entry case.
+      No number on the page is untagged.</li>
+    <li><b>Model — pure functions, closed forms first.</b> The flip volume is one line of algebra,
+      <code>V* = F/(p − cv)</code>; the 5-yr PV break-even is a ratio of discounted annuity sums,
+      pinned against a binary-search sweep to 1e-6. No black-box numerics anywhere in the path
+      a client would re-run.</li>
+    <li><b>Tests — 33 offline pytest cases.</b> Each module carries a closed-form-vs-numeric pin,
+      a scale/decay invariance check, and a sensitivity check on the pivot inputs. Zero network,
+      deterministic, one-command re-run.</li>
+    <li><b>The proof that makes it a tool, not a description.</b> An offline cross-check proves the
+      trigger is invariant to every market-size factor (halve the SAM, the flip is bit-identical)
+      while every pivot input moves it. That ablation <i>is</i> the answer to "your market number
+      is a range — which number does the decision rest on?".</li>
+    <li><b>Reproduce in one command.</b> <code>python notebooks/run_notebook.py</code> regenerates
+      <code>out/decision_numbers.json</code>; GitHub Actions runs the suite + the notebook on every
+      push; this page re-implements the same closed forms in JS and a Node harness pins the two
+      languages to the same bits.</li>
+    <li><b>The hostile pass.</b> Three interviewer attacks written down first, each answered with a
+      number, not an appeal — see the panel below.</li>
+  </ol>
+</section>
+
+<section id="hostile">
+  <h2>The three hostile attacks, answered</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>"Your market number is a range — which number does the decision actually rest on?"</h3>
+      <p>Not the SAM. The decision rests on the flip <code>F/(p−cv)</code> and the decline rate
+      <code>R − floor</code> — closed forms in cost and the partner rate. The repo's offline
+      cross-check halve-proves it: the trigger is bit-identical when the SAM is halved, and the
+      SAM only sets headroom (54× the flip at baseline).</p>
+    </div>
+    <div class="card">
+      <h3>"The partner rate and hub cost are two numbers you picked — the whole thing is one parameter."</h3>
+      <p>Two inputs, isolated by the formula: the client sees exactly how much each is worth, and
+      the 72-cell cost × rate surface is the partner screenshot — the trigger moves continuously
+      across the band, which is the re-runnable part. Build / lease / decline are priced on one
+      yardstick (USD/parcel net contribution), not three gut calls.</p>
+    </div>
+    <div class="card">
+      <h3>"RRD's $223/parcel says nothing about last-mile cost — your bottom-up bench is broken."</h3>
+      <p>It is tagged, and the tag does the work: the per-parcel figures are <i>derived</i>
+      (revenue ÷ volume), not filed, and the confidence tag carries that. RRD anchors the
+      <i>fulfillment</i> margin and the adjacent-entry question; it does not anchor delivery unit
+      cost — which is why the decision pivot is the committee's cost-to-serve, not the filing.</p>
+    </div>
+  </div>
+</section>
+
+<section id="skills">
+  <h2>Skills this project exercised</h2>
+  <ul class="chips">
+    <li>MBB case structure — funnel + quantified triggers, not description</li>
+    <li>Closed-form derivation pinned against numeric solvers (1e-6)</li>
+    <li>Python dataclasses / pure-function design (offline, testable)</li>
+    <li>pytest — 33 invariance, sensitivity &amp; pin tests</li>
+    <li>Sensitivity &amp; ablation as the core of the "cost, not SAM" claim</li>
+    <li>Public-sourcing discipline (CONFIRMED / EST / VERIFY tags)</li>
+    <li>Decision-page writing (≤1 page, partner-screenshot standard)</li>
+    <li>GitHub Actions CI + one-command reproducibility</li>
+    <li>Re-implementing a Python model in JS with cross-language test pins</li>
+  </ul>
+</section>
+
+<section id="sources">
+  <h2>Sources — tagged, as in <code>data/facts.py</code></h2>
+  <table>
+    <thead><tr><th>Figure</th><th>Value</th><th>Tag</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>US total parcels/yr</td><td>124.9B</td><td>EST</td><td>Menzies, <i>The Parcel Economy</i> (2023 commissioned study; 77.4B in 2020, ~10% CAGR)</td></tr>
+      <tr><td>USPS commercial parcels/yr</td><td>53.5B</td><td>CONFIRMED</td><td>USPS 2023 filing (50.9B in 2024, 12.8% CAGR) — the filed anchor for the top-down</td></tr>
+      <tr><td>UPS Ground</td><td>$20.11/parcel rev</td><td>EST</td><td>UPS 10-K (revenue/volume); 2026 retail Ground $11.95 rate card CONFIRMED sets the in-house upper bound</td></tr>
+      <tr><td>RR Donnelley</td><td>$223.94/parcel rev, +41% vol growth</td><td>EST</td><td>RRD 2023 filing — the adjacent-market (document → e-comm fulfillment) entry case</td></tr>
+      <tr><td>Hub fixed cost / partner rate / cost decay / capture</td><td>$500k · $5.00 · 1.5%/yr · 3%</td><td>[unverified]</td><td>Committee inputs — the client's to confirm; the tool's job is to isolate how much each is worth</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  <p><a href="https://github.com/Vedantk910/growth-market-entry">Vedantk910/growth-market-entry</a> ·
+  <a href="https://github.com/Vedantk910/growth-market-entry/blob/main/report/decision_page.md">one-page decision page</a> ·
+  the numbers on this page mirror <code>data/facts.py</code> + <code>model/</code> (pinned by <code>site/verify.js</code>).</p>
+</footer>
+</main>
+<script src="model.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
