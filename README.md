@@ -62,7 +62,16 @@ tests/      # pytest suite (offline; 33 cases)
 pip install -r requirements.txt
 python notebooks/run_notebook.py   # end-to-end, writes out/decision_numbers.json
 python -m pytest tests/ -q         # 33 offline tests
+node site/verify.js                # the interactive site's JS pins match the Python baseline
 ```
+
+## Try it live
+
+The decision tool as an interactive page: **https://growth-market-entry.vercel.app**
+Deployed from `site/` (Vercel; see `site/README.md` for the one-command
+redeploy). Drag the committee inputs and the trigger, the derivation, the
+funnel and the cost × rate surface recompute live — same closed forms as
+`model/`.
 
 The flip-volume maths is the deliverable: it states the parcel volume at
 which building beats leasing, reports the decline rate rather than burying
