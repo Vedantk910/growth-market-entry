@@ -5,18 +5,18 @@
 
   // slider input -> state key, with its formatter
   var SLIDERS = [
-    ['inV', 'volume', function (v) { return Math.round(v).toLocaleString('en-US'); }, 'oV'],
-    ['inP', 'p', function (v) { return '$' + (+v).toFixed(2); }, 'oP'],
-    ['inCV', 'cv', function (v) { return '$' + (+v).toFixed(2); }, 'oCV'],
-    ['inF', 'F', function (v) { return '$' + (v / 1000).toFixed(0) + 'k/yr'; }, 'oF'],
-    ['inR', 'R', function (v) { return '$' + (+v).toFixed(2); }, 'oR'],
-    ['inFloor', 'floor', function (v) { return '$' + (+v).toFixed(2); }, 'oFloor'],
-    ['inWacc', 'wacc', function (v) { return (+v).toFixed(1) + '%'; }, 'oWacc'],
-    ['inDecay', 'decay', function (v) { return (+v).toFixed(2) + '%'; }, 'oDecay'],
-    ['inUs', 'usTotal', function (v) { return (+v).toFixed(1) + 'B'; }, 'oUs'],
-    ['inEcomm', 'ecomm', function (v) { return (+v) + '%'; }, 'oEcomm'],
-    ['inMetro', 'metro', function (v) { return (+v) + '%'; }, 'oMetro'],
-    ['inCap', 'capture', function (v) { return (+v) + '%'; }, 'oCap']
+    ['inV', 'volume', function (v) { return Math.round(v).toLocaleString('en-US'); }],
+    ['inP', 'p', function (v) { return '$' + (+v).toFixed(2); }],
+    ['inCV', 'cv', function (v) { return '$' + (+v).toFixed(2); }],
+    ['inF', 'F', function (v) { return '$' + (v / 1000).toFixed(0) + 'k/yr'; }],
+    ['inR', 'R', function (v) { return '$' + (+v).toFixed(2); }],
+    ['inFloor', 'floor', function (v) { return '$' + (+v).toFixed(2); }],
+    ['inWacc', 'wacc', function (v) { return (+v).toFixed(1) + '%'; }],
+    ['inDecay', 'decay', function (v) { return (+v).toFixed(2) + '%'; }],
+    ['inUs', 'usTotal', function (v) { return (+v).toFixed(1) + 'B'; }],
+    ['inEcomm', 'ecomm', function (v) { return (+v) + '%'; }],
+    ['inMetro', 'metro', function (v) { return (+v) + '%'; }],
+    ['inCap', 'capture', function (v) { return (+v) + '%'; }]
   ];
   var state = Object.assign({}, M.DEFAULTS);
   // percentages stored as fractions in the model; sliders show whole %
@@ -52,9 +52,20 @@
     return Math.round(x).toLocaleString('en-US');
   }
 
+  // track fill: set --v so the webkit gradient shows progress
+  function paintTracks() {
+    SLIDERS.forEach(function (s) {
+      var el = $(s[0]);
+      if (!el) return;
+      var pct = (el.value - el.min) / (el.max - el.min) * 100;
+      el.style.setProperty('--v', pct + '%');
+    });
+  }
+
   // ------------------------------------------------------------------
   // render: one pass recomputes everything from `state`
   // ------------------------------------------------------------------
+  var statusShown = true;
   function render() {
     var tr = M.trigger(state, state.volume);
     var pv = M.strategyPVs(state, state.volume);
@@ -63,24 +74,32 @@
     // outputs next to sliders
     SLIDERS.forEach(function (s) {
       var el = $(s[0]);
-      if (el) { $(s[3]).textContent = s[2](el.value); }
+      if (el && $(s[0].replace('in', 'o'))) { $('o' + s[0].slice(2)).textContent = s[2](el.value); }
     });
+    paintTracks();
 
     // verdict
     var rec = tr.rec;
-    $('rec').textContent = rec;
-    $('rec').className = 'badge ' + rec.toLowerCase();
+    var recEl = $('rec');
+    recEl.textContent = rec;
+    recEl.className = 'tool-verdict rec-' + rec.toLowerCase();
     $('recLine').textContent = tr.line;
     $('pvBuild').textContent = fmtMoney(pv.pvBuild);
     $('pvLease').textContent = fmtMoney(pv.pvLease);
+    // verdict flip dl
+    $('dFlip').textContent = fmtInt(tr.flip) + '/yr';
+    $('dPv').textContent = fmtInt(tr.pvBe) + '/yr';
+    $('dDecline').textContent = tr.declineRate.toFixed(2) + '%/yr';
+    // hero number
+    $('heroFlip').textContent = fmtInt(tr.flip);
 
     // derivation
     $('dIH').textContent = fmtMoney(ih);
     $('dPar').textContent = fmtMoney(state.p);
-    $('dFlip').textContent = fmtInt(tr.flip);
-    $('dPv').textContent = fmtInt(tr.pvBe);
+    $('dFlip2').textContent = fmtInt(tr.flip);
+    $('dPv2').textContent = fmtInt(tr.pvBe);
     $('dParMargin').textContent = '$' + M.partnerMargin(state.R, state.p).toFixed(2);
-    $('dDecline').textContent = tr.declineRate.toFixed(2);
+    $('dDecline2').textContent = tr.declineRate.toFixed(2) + '%/yr';
     $('dVol').textContent = fmtInt(state.volume);
     $('dRec').textContent = rec;
 
@@ -92,11 +111,11 @@
       var cls = r.v === state.volume ? ' class="you"' : '';
       return '<tr' + cls + '>' +
         '<td>' + fmtInt(r.v) + (r.v === state.volume ? ' <span class="hint">(you)</span>' : '') + '</td>' +
-        '<td>$' + r.ihCost.toFixed(2) + '</td>' +
-        '<td>$' + r.parCost.toFixed(2) + '</td>' +
-        '<td>' + (r.ihMargin >= 0 ? '+' : '') + '$' + r.ihMargin.toFixed(2) + '</td>' +
-        '<td>' + (r.parMargin >= 0 ? '+' : '') + '$' + r.parMargin.toFixed(2) + '</td>' +
-        '<td>' + (r.ihWins ? '<span class="enter">BUILD</span>' : '<span class="partner">PARTNER</span>') + '</td>' +
+        '<td class="n">$' + r.ihCost.toFixed(2) + '</td>' +
+        '<td class="n">$' + r.parCost.toFixed(2) + '</td>' +
+        '<td class="n">' + (r.ihMargin >= 0 ? '+' : '') + '$' + r.ihMargin.toFixed(2) + '</td>' +
+        '<td class="n">' + (r.parMargin >= 0 ? '+' : '') + '$' + r.parMargin.toFixed(2) + '</td>' +
+        '<td class="n">' + (r.ihWins ? '<span class="enter">BUILD</span>' : '<span class="partner">PARTNER</span>') + '</td>' +
         '</tr>';
     }).join('');
 
@@ -141,11 +160,7 @@
               (isFinite(cell.flip) ? 'flip ' + fmtInt(cell.flip) + '/yr' : 'in-house never cheaper') +
               ' (' + cell.win + ')"></div>';
           }).join('') + '</div>';
-      }).join('') + '</div>' +
-      '<div class="skey">' +
-      '<span><i class="enter"></i>build</span>' +
-      '<span><i class="partner"></i>partner</span>' +
-      '<span><i class="decline"></i>decline</span></div>';
+      }).join('') + '</div>';
     var youAt = (function () {
       for (var i = 0; i < cells.length; i++) {
         if (cells[i].cv === state.cv && cells[i].p === state.p) { return cells[i].win; }
@@ -165,6 +180,8 @@
         readState(); render();
       });
     });
+
+    if (statusShown) { statusShown = false; $('status').hidden = true; }
   }
 
   // ------------------------------------------------------------------
@@ -175,15 +192,31 @@
     state = Object.assign({}, M.DEFAULTS); pushState(); render();
   });
   $('btnRandom').addEventListener('click', function () {
-    function between(id, lo, hi) { return lo + Math.random() * (hi - lo); }
-    $('inV').value = Math.round(between('inV', 50000, 800000) / 10000) * 10000;
-    $('inP').value = between('inP', 4.0, 6.0).toFixed(2);
-    $('inCV').value = between('inCV', 2.8, 4.6).toFixed(2);
-    $('inF').value = Math.round(between('inF', 200000, 1200000) / 25000) * 25000;
-    $('inR').value = between('inR', 5.0, 7.0).toFixed(2);
-    $('inFloor').value = between('inFloor', 0.2, 0.8).toFixed(2);
+    function between(lo, hi) { return lo + Math.random() * (hi - lo); }
+    $('inV').value = Math.round(between(50000, 800000) / 10000) * 10000;
+    $('inP').value = between(4.0, 6.0).toFixed(2);
+    $('inCV').value = between(2.8, 4.6).toFixed(2);
+    $('inF').value = Math.round(between(200000, 1200000) / 25000) * 25000;
+    $('inR').value = between(5.0, 7.0).toFixed(2);
+    $('inFloor').value = between(0.2, 0.8).toFixed(2);
     readState(); render();
   });
+
+  // mobile menu
+  var menu = $('menu'), links = $('links');
+  menu.addEventListener('click', function () {
+    var open = links.classList.toggle('open');
+    menu.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  links.addEventListener('click', function (e) {
+    if (e.target.tagName === 'A') { links.classList.remove('open'); menu.setAttribute('aria-expanded', 'false'); }
+  });
+
+  // reveal on entry
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
 
   pushState(); render();
 })();
